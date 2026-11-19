@@ -1,0 +1,6 @@
+{
+  "name": "Invitation Studio – Online Invitation Website Builder",
+  "description": "Create personalized luxury invitation websites for weddings, birthdays, anniversaries, and special occasions with live customization, RSVP tracking, QR codes, and interactive venue maps.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

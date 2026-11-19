@@ -1,0 +1,852 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net (Default-Deny Catch-All)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Connection test endpoint for startup testConnection()
+    match /test/connection {
+      allow get: if true;
+    }
+
+    // =========================================================================
+    // Phase 3: Global Hardened Primitives
+    // =========================================================================
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isVerifiedUser() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        request.auth.token.email == "tanmoydari4@gmail.com" ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // =========================================================================
+    // Pillar 2: Validation Blueprints (Anti-Update-Gap)
+    // =========================================================================
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'phone', 'savedTemplateIds', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'displayName', 'phone', 'savedTemplateIds', 'createdAt', 'updatedAt']) &&
+        isValidId(data.uid) &&
+        data.uid == request.auth.uid &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 254 &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100 &&
+        data.phone is string && data.phone.size() >= 0 && data.phone.size() <= 30 &&
+        data.savedTemplateIds is list && data.savedTemplateIds.size() <= 50 &&
+        (data.savedTemplateIds.size() == 0 || (data.savedTemplateIds[0] is string && data.savedTemplateIds[0].size() <= 128)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidAdminUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'createdAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'role', 'createdAt']) &&
+        isValidId(data.uid) &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 254 &&
+        data.role is string && data.role.size() >= 5 && data.role.size() <= 20 &&
+        (data.role == 'admin' || data.role == 'super_admin') &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidCategory(data) {
+      return data.keys().hasAll(['id', 'name', 'slug', 'description', 'displayOrder', 'isActive', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'name', 'slug', 'description', 'displayOrder', 'isActive', 'createdAt', 'updatedAt']) &&
+        isValidId(data.id) &&
+        data.name is string && data.name.size() >= 2 && data.name.size() <= 80 &&
+        data.slug is string && data.slug.size() >= 2 && data.slug.size() <= 80 && data.slug.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.description is string && data.description.size() >= 2 && data.description.size() <= 300 &&
+        data.displayOrder is number && data.displayOrder >= 0 && data.displayOrder <= 1000 &&
+        data.isActive is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidTemplate(data) {
+      return data.keys().hasAll([
+          'id', 'title', 'slug', 'categoryId', 'categoryName', 'tier', 'price',
+          'accentColor', 'themeStyle', 'previewImage', 'description',
+          'isFeatured', 'isPopular', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'title', 'slug', 'categoryId', 'categoryName', 'tier', 'price',
+          'accentColor', 'themeStyle', 'previewImage', 'description',
+          'isFeatured', 'isPopular', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.title is string && data.title.size() >= 2 && data.title.size() <= 100 &&
+        data.slug is string && data.slug.size() >= 2 && data.slug.size() <= 100 && data.slug.matches('^[a-zA-Z0-9_\\-]+$') &&
+        isValidId(data.categoryId) &&
+        data.categoryName is string && data.categoryName.size() >= 2 && data.categoryName.size() <= 80 &&
+        data.tier is string && data.tier.size() >= 4 && data.tier.size() <= 20 &&
+        (data.tier == 'free' || data.tier == 'basic' || data.tier == 'premium') &&
+        data.price is number && data.price >= 0 && data.price <= 1000000 &&
+        data.accentColor is string && data.accentColor.size() >= 4 && data.accentColor.size() <= 30 &&
+        data.themeStyle is string && data.themeStyle.size() >= 2 && data.themeStyle.size() <= 40 &&
+        data.previewImage is string && data.previewImage.size() >= 1 && data.previewImage.size() <= 500 &&
+        data.description is string && data.description.size() >= 2 && data.description.size() <= 400 &&
+        data.isFeatured is bool &&
+        data.isPopular is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidInvitation(data) {
+      return data.keys().hasAll([
+          'id', 'slug', 'ownerId', 'templateId', 'categoryId', 'status',
+          'eventTitle', 'hostName', 'brideName', 'groomName', 'familyNames',
+          'eventDate', 'eventTime', 'venueName', 'venueAddress', 'venueLat', 'venueLng',
+          'coverPhotoUrl', 'backgroundImageUrl', 'videoUrl', 'musicTrack',
+          'welcomeMessage', 'themeColor', 'fontPairing', 'showCountdown',
+          'showMap', 'showRsvp', 'showWishes', 'whatsappNumber', 'socialLink',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'slug', 'ownerId', 'templateId', 'categoryId', 'status',
+          'eventTitle', 'hostName', 'brideName', 'groomName', 'familyNames',
+          'eventDate', 'eventTime', 'venueName', 'venueAddress', 'venueLat', 'venueLng',
+          'coverPhotoUrl', 'backgroundImageUrl', 'videoUrl', 'musicTrack',
+          'welcomeMessage', 'themeColor', 'fontPairing', 'showCountdown',
+          'showMap', 'showRsvp', 'showWishes', 'whatsappNumber', 'socialLink',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.slug is string && data.slug.size() >= 3 && data.slug.size() <= 120 && data.slug.matches('^[a-zA-Z0-9_\\-]+$') &&
+        isValidId(data.ownerId) &&
+        (data.ownerId == request.auth.uid || isAdmin()) &&
+        isValidId(data.templateId) &&
+        isValidId(data.categoryId) &&
+        data.status is string && data.status.size() >= 5 && data.status.size() <= 20 &&
+        (data.status == 'draft' || data.status == 'published') &&
+        data.eventTitle is string && data.eventTitle.size() >= 2 && data.eventTitle.size() <= 140 &&
+        data.hostName is string && data.hostName.size() >= 1 && data.hostName.size() <= 120 &&
+        data.brideName is string && data.brideName.size() >= 0 && data.brideName.size() <= 100 &&
+        data.groomName is string && data.groomName.size() >= 0 && data.groomName.size() <= 100 &&
+        data.familyNames is string && data.familyNames.size() >= 0 && data.familyNames.size() <= 250 &&
+        data.eventDate is string && data.eventDate.size() >= 4 && data.eventDate.size() <= 40 &&
+        data.eventTime is string && data.eventTime.size() >= 2 && data.eventTime.size() <= 40 &&
+        data.venueName is string && data.venueName.size() >= 2 && data.venueName.size() <= 150 &&
+        data.venueAddress is string && data.venueAddress.size() >= 2 && data.venueAddress.size() <= 300 &&
+        data.venueLat is number && data.venueLat >= -90 && data.venueLat <= 90 &&
+        data.venueLng is number && data.venueLng >= -180 && data.venueLng <= 180 &&
+        data.coverPhotoUrl is string && data.coverPhotoUrl.size() >= 0 && data.coverPhotoUrl.size() <= 600 &&
+        data.backgroundImageUrl is string && data.backgroundImageUrl.size() >= 0 && data.backgroundImageUrl.size() <= 600 &&
+        data.videoUrl is string && data.videoUrl.size() >= 0 && data.videoUrl.size() <= 600 &&
+        data.musicTrack is string && data.musicTrack.size() >= 0 && data.musicTrack.size() <= 200 &&
+        data.welcomeMessage is string && data.welcomeMessage.size() >= 0 && data.welcomeMessage.size() <= 1000 &&
+        data.themeColor is string && data.themeColor.size() >= 3 && data.themeColor.size() <= 30 &&
+        data.fontPairing is string && data.fontPairing.size() >= 2 && data.fontPairing.size() <= 60 &&
+        data.showCountdown is bool &&
+        data.showMap is bool &&
+        data.showRsvp is bool &&
+        data.showWishes is bool &&
+        data.whatsappNumber is string && data.whatsappNumber.size() >= 0 && data.whatsappNumber.size() <= 30 &&
+        data.socialLink is string && data.socialLink.size() >= 0 && data.socialLink.size() <= 300 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidInvitationEvent(data) {
+      return data.keys().hasAll([
+          'id', 'invitationId', 'ownerId', 'isPublic', 'title',
+          'eventDate', 'eventTime', 'venueName', 'venueAddress', 'description',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'invitationId', 'ownerId', 'isPublic', 'title',
+          'eventDate', 'eventTime', 'venueName', 'venueAddress', 'description',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.invitationId) &&
+        isValidId(data.ownerId) &&
+        (data.ownerId == request.auth.uid || isAdmin()) &&
+        data.isPublic is bool &&
+        data.title is string && data.title.size() >= 2 && data.title.size() <= 120 &&
+        data.eventDate is string && data.eventDate.size() >= 4 && data.eventDate.size() <= 40 &&
+        data.eventTime is string && data.eventTime.size() >= 2 && data.eventTime.size() <= 40 &&
+        data.venueName is string && data.venueName.size() >= 2 && data.venueName.size() <= 150 &&
+        data.venueAddress is string && data.venueAddress.size() >= 2 && data.venueAddress.size() <= 300 &&
+        data.description is string && data.description.size() >= 0 && data.description.size() <= 400 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidInvitationGalleryItem(data) {
+      return data.keys().hasAll([
+          'id', 'invitationId', 'ownerId', 'isPublic', 'imageUrl',
+          'caption', 'displayOrder', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'invitationId', 'ownerId', 'isPublic', 'imageUrl',
+          'caption', 'displayOrder', 'createdAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.invitationId) &&
+        isValidId(data.ownerId) &&
+        (data.ownerId == request.auth.uid || isAdmin()) &&
+        data.isPublic is bool &&
+        data.imageUrl is string && data.imageUrl.size() >= 1 && data.imageUrl.size() <= 600 &&
+        data.caption is string && data.caption.size() >= 0 && data.caption.size() <= 200 &&
+        data.displayOrder is number && data.displayOrder >= 0 && data.displayOrder <= 1000 &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidRsvpResponse(data) {
+      return data.keys().hasAll([
+          'id', 'invitationId', 'invitationOwnerId', 'authorId', 'guestName',
+          'attending', 'guestsCount', 'dietaryNotes', 'wishMessage',
+          'isPublicWish', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'invitationId', 'invitationOwnerId', 'authorId', 'guestName',
+          'attending', 'guestsCount', 'dietaryNotes', 'wishMessage',
+          'isPublicWish', 'createdAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.invitationId) &&
+        isValidId(data.invitationOwnerId) &&
+        isValidId(data.authorId) &&
+        data.authorId == request.auth.uid &&
+        data.guestName is string && data.guestName.size() >= 2 && data.guestName.size() <= 100 &&
+        data.attending is string && data.attending.size() >= 2 && data.attending.size() <= 10 &&
+        (data.attending == 'yes' || data.attending == 'no' || data.attending == 'maybe') &&
+        data.guestsCount is number && data.guestsCount >= 1 && data.guestsCount <= 20 &&
+        data.dietaryNotes is string && data.dietaryNotes.size() >= 0 && data.dietaryNotes.size() <= 250 &&
+        data.wishMessage is string && data.wishMessage.size() >= 0 && data.wishMessage.size() <= 500 &&
+        data.isPublicWish is bool &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll([
+          'id', 'ownerId', 'planId', 'planName', 'invitationId',
+          'amount', 'discountAmount', 'finalAmount', 'couponCode',
+          'currency', 'status', 'razorpayOrderId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'ownerId', 'planId', 'planName', 'invitationId',
+          'amount', 'discountAmount', 'finalAmount', 'couponCode',
+          'currency', 'status', 'razorpayOrderId', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.ownerId) &&
+        (data.ownerId == request.auth.uid || isAdmin()) &&
+        isValidId(data.planId) &&
+        data.planName is string && data.planName.size() >= 2 && data.planName.size() <= 80 &&
+        isValidId(data.invitationId) &&
+        data.amount is number && data.amount >= 0 && data.amount <= 1000000 &&
+        data.discountAmount is number && data.discountAmount >= 0 && data.discountAmount <= 1000000 &&
+        data.finalAmount is number && data.finalAmount >= 0 && data.finalAmount <= 1000000 &&
+        data.couponCode is string && data.couponCode.size() >= 0 && data.couponCode.size() <= 40 &&
+        data.currency is string && data.currency.size() >= 3 && data.currency.size() <= 10 &&
+        data.status is string && data.status.size() >= 4 && data.status.size() <= 20 &&
+        (data.status == 'pending' || data.status == 'paid' || data.status == 'failed') &&
+        data.razorpayOrderId is string && data.razorpayOrderId.size() >= 1 && data.razorpayOrderId.size() <= 120 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidPayment(data) {
+      return data.keys().hasAll([
+          'id', 'orderId', 'ownerId', 'amount', 'currency',
+          'razorpayPaymentId', 'razorpayOrderId', 'razorpaySignature',
+          'status', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'orderId', 'ownerId', 'amount', 'currency',
+          'razorpayPaymentId', 'razorpayOrderId', 'razorpaySignature',
+          'status', 'createdAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.orderId) &&
+        isValidId(data.ownerId) &&
+        (data.ownerId == request.auth.uid || isAdmin()) &&
+        data.amount is number && data.amount >= 0 && data.amount <= 1000000 &&
+        data.currency is string && data.currency.size() >= 3 && data.currency.size() <= 10 &&
+        data.razorpayPaymentId is string && data.razorpayPaymentId.size() >= 4 && data.razorpayPaymentId.size() <= 120 &&
+        data.razorpayOrderId is string && data.razorpayOrderId.size() >= 4 && data.razorpayOrderId.size() <= 120 &&
+        data.razorpaySignature is string && data.razorpaySignature.size() >= 8 && data.razorpaySignature.size() <= 256 &&
+        data.status is string && data.status.size() >= 6 && data.status.size() <= 20 &&
+        (data.status == 'verified' || data.status == 'failed') &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidSubscriptionPlan(data) {
+      return data.keys().hasAll([
+          'id', 'name', 'tier', 'price', 'currency', 'billingPeriod',
+          'description', 'features', 'isPopular', 'isActive',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'name', 'tier', 'price', 'currency', 'billingPeriod',
+          'description', 'features', 'isPopular', 'isActive',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.name is string && data.name.size() >= 2 && data.name.size() <= 60 &&
+        data.tier is string && data.tier.size() >= 4 && data.tier.size() <= 20 &&
+        (data.tier == 'free' || data.tier == 'basic' || data.tier == 'premium' || data.tier == 'custom') &&
+        data.price is number && data.price >= 0 && data.price <= 1000000 &&
+        data.currency is string && data.currency.size() >= 3 && data.currency.size() <= 10 &&
+        data.billingPeriod is string && data.billingPeriod.size() >= 2 && data.billingPeriod.size() <= 40 &&
+        data.description is string && data.description.size() >= 2 && data.description.size() <= 250 &&
+        data.features is list && data.features.size() >= 1 && data.features.size() <= 15 &&
+        data.features[0] is string && data.features[0].size() <= 150 &&
+        data.isPopular is bool &&
+        data.isActive is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidCoupon(data) {
+      return data.keys().hasAll([
+          'id', 'code', 'discountPercent', 'maxDiscountAmount',
+          'isActive', 'expiryDate', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'code', 'discountPercent', 'maxDiscountAmount',
+          'isActive', 'expiryDate', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.code is string && data.code.size() >= 3 && data.code.size() <= 30 && data.code.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.discountPercent is number && data.discountPercent >= 1 && data.discountPercent <= 100 &&
+        data.maxDiscountAmount is number && data.maxDiscountAmount >= 0 && data.maxDiscountAmount <= 1000000 &&
+        data.isActive is bool &&
+        data.expiryDate is string && data.expiryDate.size() >= 4 && data.expiryDate.size() <= 40 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidTestimonial(data) {
+      return data.keys().hasAll([
+          'id', 'customerName', 'customerRole', 'occasion',
+          'quote', 'outcomeMetric', 'rating', 'isApproved',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'customerName', 'customerRole', 'occasion',
+          'quote', 'outcomeMetric', 'rating', 'isApproved',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.customerName is string && data.customerName.size() >= 2 && data.customerName.size() <= 80 &&
+        data.customerRole is string && data.customerRole.size() >= 2 && data.customerRole.size() <= 100 &&
+        data.occasion is string && data.occasion.size() >= 2 && data.occasion.size() <= 80 &&
+        data.quote is string && data.quote.size() >= 10 && data.quote.size() <= 500 &&
+        data.outcomeMetric is string && data.outcomeMetric.size() >= 2 && data.outcomeMetric.size() <= 120 &&
+        data.rating is number && data.rating >= 1 && data.rating <= 5 &&
+        data.isApproved is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidHomepageBanner(data) {
+      return data.keys().hasAll([
+          'id', 'headline', 'subheadline', 'ctaText', 'promoText',
+          'supportEmail', 'supportPhone', 'razorpayKeyId', 'isActive', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'headline', 'subheadline', 'ctaText', 'promoText',
+          'supportEmail', 'supportPhone', 'razorpayKeyId', 'isActive', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.headline is string && data.headline.size() >= 5 && data.headline.size() <= 160 &&
+        data.subheadline is string && data.subheadline.size() >= 5 && data.subheadline.size() <= 350 &&
+        data.ctaText is string && data.ctaText.size() >= 2 && data.ctaText.size() <= 60 &&
+        data.promoText is string && data.promoText.size() >= 0 && data.promoText.size() <= 140 &&
+        data.supportEmail is string && data.supportEmail.size() >= 3 && data.supportEmail.size() <= 254 &&
+        data.supportPhone is string && data.supportPhone.size() >= 3 && data.supportPhone.size() <= 40 &&
+        data.razorpayKeyId is string && data.razorpayKeyId.size() >= 0 && data.razorpayKeyId.size() <= 120 &&
+        data.isActive is bool &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidContactMessage(data) {
+      return data.keys().hasAll([
+          'id', 'senderId', 'senderName', 'senderEmail',
+          'subject', 'message', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'senderId', 'senderName', 'senderEmail',
+          'subject', 'message', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.senderId) &&
+        (data.senderId == request.auth.uid || isAdmin()) &&
+        data.senderName is string && data.senderName.size() >= 2 && data.senderName.size() <= 100 &&
+        data.senderEmail is string && data.senderEmail.size() >= 3 && data.senderEmail.size() <= 254 &&
+        data.subject is string && data.subject.size() >= 2 && data.subject.size() <= 150 &&
+        data.message is string && data.message.size() >= 5 && data.message.size() <= 1500 &&
+        data.status is string && data.status.size() >= 3 && data.status.size() <= 20 &&
+        (data.status == 'new' || data.status == 'resolved') &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // =========================================================================
+    // Phase 4 & 6: Final Production Fortress Rules for All 15 Collections
+    // =========================================================================
+
+    // 1. /users/{userId} (PII Isolated to Owner or Admin)
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if (isVerifiedUser() && existing().uid == request.auth.uid) || isAdmin();
+      allow create: if isOwner(userId) &&
+        isValidId(userId) &&
+        isValidUserProfile(incoming()) &&
+        incoming().uid == userId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isValidUserProfile(incoming()) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() ||
+          (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'phone', 'savedTemplateIds', 'updatedAt']))
+        );
+      allow delete: if isValidId(userId) && isAdmin();
+    }
+
+    // 2. /admins/{adminId}
+    match /admins/{adminId} {
+      allow get: if isValidId(adminId) && (isOwner(adminId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isAdmin() &&
+        isValidId(adminId) &&
+        isValidAdminUser(incoming()) &&
+        incoming().uid == adminId &&
+        incoming().createdAt == request.time;
+      allow update: if isAdmin() &&
+        isValidId(adminId) &&
+        isValidAdminUser(incoming()) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['role', 'email']);
+      allow delete: if isValidId(adminId) && isAdmin();
+    }
+
+    // 3. /categories/{categoryId}
+    match /categories/{categoryId} {
+      allow get: if isValidId(categoryId) && (existing().isActive == true || isAdmin());
+      allow list: if existing().isActive == true || isAdmin();
+      allow create: if isAdmin() &&
+        isValidId(categoryId) &&
+        isValidCategory(incoming()) &&
+        incoming().id == categoryId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isAdmin() &&
+        isValidId(categoryId) &&
+        isValidCategory(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'slug', 'description', 'displayOrder', 'isActive', 'updatedAt']);
+      allow delete: if isValidId(categoryId) && isAdmin();
+    }
+
+    // 4. /templates/{templateId}
+    match /templates/{templateId} {
+      allow get: if isValidId(templateId);
+      allow list: if existing().price >= 0;
+      allow create: if isAdmin() &&
+        isValidId(templateId) &&
+        isValidTemplate(incoming()) &&
+        incoming().id == templateId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time && (
+          exists(/databases/$(database)/documents/categories/$(incoming().categoryId)) ||
+          existsAfter(/databases/$(database)/documents/categories/$(incoming().categoryId))
+        );
+      allow update: if isAdmin() &&
+        isValidId(templateId) &&
+        isValidTemplate(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'slug', 'categoryId', 'categoryName', 'tier', 'price',
+          'accentColor', 'themeStyle', 'previewImage', 'description',
+          'isFeatured', 'isPopular', 'updatedAt'
+        ]);
+      allow delete: if isValidId(templateId) && isAdmin();
+    }
+
+    // 5. /invitations/{invitationId}
+    match /invitations/{invitationId} {
+      allow get: if isValidId(invitationId) && (
+        existing().status == 'published' ||
+        (isVerifiedUser() && existing().ownerId == request.auth.uid) ||
+        isAdmin()
+      );
+      allow list: if existing().status == 'published' ||
+        (isVerifiedUser() && existing().ownerId == request.auth.uid) ||
+        isAdmin();
+      allow create: if isVerifiedUser() &&
+        isValidId(invitationId) &&
+        isValidInvitation(incoming()) &&
+        incoming().id == invitationId &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time && (
+          exists(/databases/$(database)/documents/templates/$(incoming().templateId)) ||
+          existsAfter(/databases/$(database)/documents/templates/$(incoming().templateId))
+        );
+      allow update: if isVerifiedUser() &&
+        isValidId(invitationId) &&
+        isValidInvitation(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() ||
+          (isOwner(existing().ownerId) && incoming().diff(existing()).affectedKeys().hasOnly([
+            'slug', 'templateId', 'categoryId', 'status', 'eventTitle', 'hostName',
+            'brideName', 'groomName', 'familyNames', 'eventDate', 'eventTime',
+            'venueName', 'venueAddress', 'venueLat', 'venueLng', 'coverPhotoUrl',
+            'backgroundImageUrl', 'videoUrl', 'musicTrack', 'welcomeMessage',
+            'themeColor', 'fontPairing', 'showCountdown', 'showMap', 'showRsvp',
+            'showWishes', 'whatsappNumber', 'socialLink', 'updatedAt'
+          ]))
+        );
+      allow delete: if isValidId(invitationId) && (isOwner(existing().ownerId) || isAdmin());
+
+      // 6. /invitations/{invitationId}/events/{eventId} (Master Gate Subcollection)
+      match /events/{eventId} {
+        allow get: if isValidId(invitationId) && isValidId(eventId) && (
+          existing().isPublic == true ||
+          isOwner(existing().ownerId) ||
+          isAdmin() ||
+          get(/databases/$(database)/documents/invitations/$(invitationId)).data.status == 'published'
+        );
+        allow list: if existing().isPublic == true ||
+          (isVerifiedUser() && existing().ownerId == request.auth.uid) ||
+          isAdmin();
+        allow create: if isVerifiedUser() &&
+          isValidId(invitationId) &&
+          isValidId(eventId) &&
+          isValidInvitationEvent(incoming()) &&
+          incoming().id == eventId &&
+          incoming().invitationId == invitationId &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time && (
+            isAdmin() ||
+            (exists(/databases/$(database)/documents/invitations/$(invitationId)) &&
+              get(/databases/$(database)/documents/invitations/$(invitationId)).data.ownerId == request.auth.uid) ||
+            (existsAfter(/databases/$(database)/documents/invitations/$(invitationId)) &&
+              getAfter(/databases/$(database)/documents/invitations/$(invitationId)).data.ownerId == request.auth.uid)
+          );
+        allow update: if isVerifiedUser() &&
+          isValidId(invitationId) &&
+          isValidId(eventId) &&
+          isValidInvitationEvent(incoming()) &&
+          incoming().id == existing().id &&
+          incoming().invitationId == existing().invitationId &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time && (
+            isAdmin() ||
+            (
+              get(/databases/$(database)/documents/invitations/$(invitationId)).data.ownerId == request.auth.uid &&
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'isPublic', 'title', 'eventDate', 'eventTime', 'venueName', 'venueAddress', 'description', 'updatedAt'
+              ])
+            )
+          );
+        allow delete: if isVerifiedUser() &&
+          isValidId(invitationId) &&
+          isValidId(eventId) && (
+            isAdmin() ||
+            get(/databases/$(database)/documents/invitations/$(invitationId)).data.ownerId == request.auth.uid
+          );
+      }
+
+      // 7. /invitations/{invitationId}/gallery/{photoId} (Master Gate Subcollection)
+      match /gallery/{photoId} {
+        allow get: if isValidId(invitationId) && isValidId(photoId) && (
+          existing().isPublic == true ||
+          isOwner(existing().ownerId) ||
+          isAdmin() ||
+          get(/databases/$(database)/documents/invitations/$(invitationId)).data.status == 'published'
+        );
+        allow list: if existing().isPublic == true ||
+          (isVerifiedUser() && existing().ownerId == request.auth.uid) ||
+          isAdmin();
+        allow create: if isVerifiedUser() &&
+          isValidId(invitationId) &&
+          isValidId(photoId) &&
+          isValidInvitationGalleryItem(incoming()) &&
+          incoming().id == photoId &&
+          incoming().invitationId == invitationId &&
+          incoming().createdAt == request.time && (
+            isAdmin() ||
+            (exists(/databases/$(database)/documents/invitations/$(invitationId)) &&
+              get(/databases/$(database)/documents/invitations/$(invitationId)).data.ownerId == request.auth.uid) ||
+            (existsAfter(/databases/$(database)/documents/invitations/$(invitationId)) &&
+              getAfter(/databases/$(database)/documents/invitations/$(invitationId)).data.ownerId == request.auth.uid)
+          );
+        allow update: if isVerifiedUser() &&
+          isValidId(invitationId) &&
+          isValidId(photoId) &&
+          isValidInvitationGalleryItem(incoming()) &&
+          incoming().id == existing().id &&
+          incoming().invitationId == existing().invitationId &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().createdAt == existing().createdAt && (
+            isAdmin() ||
+            (
+              get(/databases/$(database)/documents/invitations/$(invitationId)).data.ownerId == request.auth.uid &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['isPublic', 'imageUrl', 'caption', 'displayOrder'])
+            )
+          );
+        allow delete: if isVerifiedUser() &&
+          isValidId(invitationId) &&
+          isValidId(photoId) && (
+            isAdmin() ||
+            get(/databases/$(database)/documents/invitations/$(invitationId)).data.ownerId == request.auth.uid
+          );
+      }
+
+      // 8. /invitations/{invitationId}/rsvps/{rsvpId}
+      match /rsvps/{rsvpId} {
+        allow get: if isValidId(invitationId) && isValidId(rsvpId) && (
+          existing().isPublicWish == true ||
+          (isVerifiedUser() && (existing().invitationOwnerId == request.auth.uid || existing().authorId == request.auth.uid)) ||
+          isAdmin()
+        );
+        allow list: if existing().isPublicWish == true ||
+          (isVerifiedUser() && (existing().invitationOwnerId == request.auth.uid || existing().authorId == request.auth.uid)) ||
+          isAdmin();
+        allow create: if isVerifiedUser() &&
+          isValidId(invitationId) &&
+          isValidId(rsvpId) &&
+          isValidRsvpResponse(incoming()) &&
+          incoming().id == rsvpId &&
+          incoming().invitationId == invitationId &&
+          incoming().createdAt == request.time &&
+          exists(/databases/$(database)/documents/invitations/$(invitationId)) &&
+          get(/databases/$(database)/documents/invitations/$(invitationId)).data.status == 'published';
+        allow update: if isVerifiedUser() &&
+          isValidId(invitationId) &&
+          isValidId(rsvpId) &&
+          isValidRsvpResponse(incoming()) &&
+          incoming().id == existing().id &&
+          incoming().invitationId == existing().invitationId &&
+          incoming().invitationOwnerId == existing().invitationOwnerId &&
+          incoming().authorId == existing().authorId &&
+          incoming().createdAt == existing().createdAt && (
+            isAdmin() ||
+            (isOwner(existing().authorId) && incoming().diff(existing()).affectedKeys().hasOnly(['attending', 'guestsCount', 'dietaryNotes', 'wishMessage', 'isPublicWish']))
+          );
+        allow delete: if isVerifiedUser() &&
+          isValidId(invitationId) &&
+          isValidId(rsvpId) && (
+            isAdmin() ||
+            isOwner(existing().invitationOwnerId) ||
+            isOwner(existing().authorId)
+          );
+      }
+    }
+
+    // 9. /orders/{orderId} (With Terminal State Locking)
+    match /orders/{orderId} {
+      allow get: if isValidId(orderId) && (isOwner(existing().ownerId) || isAdmin());
+      allow list: if (isVerifiedUser() && existing().ownerId == request.auth.uid) || isAdmin();
+      allow create: if isVerifiedUser() &&
+        isValidId(orderId) &&
+        isValidOrder(incoming()) &&
+        incoming().id == orderId &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().status == 'pending' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time && (
+          exists(/databases/$(database)/documents/plans/$(incoming().planId)) ||
+          existsAfter(/databases/$(database)/documents/plans/$(incoming().planId))
+        );
+      allow update: if isVerifiedUser() &&
+        isValidId(orderId) &&
+        isValidOrder(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().planId == existing().planId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() ||
+          (
+            existing().status == 'pending' &&
+            isOwner(existing().ownerId) &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          )
+        );
+      allow delete: if isValidId(orderId) && isAdmin();
+    }
+
+    // 10. /payments/{paymentId}
+    match /payments/{paymentId} {
+      allow get: if isValidId(paymentId) && (isOwner(existing().ownerId) || isAdmin());
+      allow list: if (isVerifiedUser() && existing().ownerId == request.auth.uid) || isAdmin();
+      allow create: if isVerifiedUser() &&
+        isValidId(paymentId) &&
+        isValidPayment(incoming()) &&
+        incoming().id == paymentId &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        exists(/databases/$(database)/documents/orders/$(incoming().orderId)) &&
+        get(/databases/$(database)/documents/orders/$(incoming().orderId)).data.ownerId == request.auth.uid;
+      allow update: if isAdmin() &&
+        isValidId(paymentId) &&
+        isValidPayment(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().orderId == existing().orderId &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status']);
+      allow delete: if isValidId(paymentId) && isAdmin();
+    }
+
+    // 11. /plans/{planId}
+    match /plans/{planId} {
+      allow get: if isValidId(planId) && (existing().isActive == true || isAdmin());
+      allow list: if existing().isActive == true || isAdmin();
+      allow create: if isAdmin() &&
+        isValidId(planId) &&
+        isValidSubscriptionPlan(incoming()) &&
+        incoming().id == planId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isAdmin() &&
+        isValidId(planId) &&
+        isValidSubscriptionPlan(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'tier', 'price', 'currency', 'billingPeriod',
+          'description', 'features', 'isPopular', 'isActive', 'updatedAt'
+        ]);
+      allow delete: if isValidId(planId) && isAdmin();
+    }
+
+    // 12. /coupons/{couponId}
+    match /coupons/{couponId} {
+      allow get: if isValidId(couponId) && (existing().isActive == true || isAdmin());
+      allow list: if existing().isActive == true || isAdmin();
+      allow create: if isAdmin() &&
+        isValidId(couponId) &&
+        isValidCoupon(incoming()) &&
+        incoming().id == couponId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isAdmin() &&
+        isValidId(couponId) &&
+        isValidCoupon(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'code', 'discountPercent', 'maxDiscountAmount', 'isActive', 'expiryDate', 'updatedAt'
+        ]);
+      allow delete: if isValidId(couponId) && isAdmin();
+    }
+
+    // 13. /testimonials/{testimonialId}
+    match /testimonials/{testimonialId} {
+      allow get: if isValidId(testimonialId) && (existing().isApproved == true || isAdmin());
+      allow list: if existing().isApproved == true || isAdmin();
+      allow create: if isAdmin() &&
+        isValidId(testimonialId) &&
+        isValidTestimonial(incoming()) &&
+        incoming().id == testimonialId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isAdmin() &&
+        isValidId(testimonialId) &&
+        isValidTestimonial(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'customerName', 'customerRole', 'occasion', 'quote', 'outcomeMetric', 'rating', 'isApproved', 'updatedAt'
+        ]);
+      allow delete: if isValidId(testimonialId) && isAdmin();
+    }
+
+    // 14. /banners/{bannerId}
+    match /banners/{bannerId} {
+      allow get: if isValidId(bannerId) && (existing().isActive == true || isAdmin());
+      allow list: if existing().isActive == true || isAdmin();
+      allow create: if isAdmin() &&
+        isValidId(bannerId) &&
+        isValidHomepageBanner(incoming()) &&
+        incoming().id == bannerId &&
+        incoming().updatedAt == request.time;
+      allow update: if isAdmin() &&
+        isValidId(bannerId) &&
+        isValidHomepageBanner(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'headline', 'subheadline', 'ctaText', 'promoText',
+          'supportEmail', 'supportPhone', 'razorpayKeyId', 'isActive', 'updatedAt'
+        ]);
+      allow delete: if isValidId(bannerId) && isAdmin();
+    }
+
+    // 15. /contact_messages/{messageId} (PII Isolated + Terminal State Locking)
+    match /contact_messages/{messageId} {
+      allow get: if isValidId(messageId) && (isOwner(existing().senderId) || isAdmin());
+      allow list: if (isVerifiedUser() && existing().senderId == request.auth.uid) || isAdmin();
+      allow create: if isVerifiedUser() &&
+        isValidId(messageId) &&
+        isValidContactMessage(incoming()) &&
+        incoming().id == messageId &&
+        incoming().senderId == request.auth.uid &&
+        incoming().status == 'new' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() &&
+        isValidId(messageId) &&
+        isValidContactMessage(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().senderId == existing().senderId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() ||
+          (
+            existing().status == 'new' &&
+            isOwner(existing().senderId) &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['message', 'updatedAt'])
+          )
+        );
+      allow delete: if isValidId(messageId) && isAdmin();
+    }
+  }
+}

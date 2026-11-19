@@ -1,0 +1,1143 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private customer profile and saved template preferences",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Customer email address",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Customer full name",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact phone number",
+          "minLength": 0,
+          "maxLength": 30
+        },
+        "savedTemplateIds": {
+          "type": "array",
+          "description": "Bounded list of saved template IDs (max 50)"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["uid", "email", "displayName", "phone", "savedTemplateIds", "createdAt", "updatedAt"]
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Authorized administrator registry record",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Admin Firebase Auth UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Admin email address",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "super_admin"],
+          "description": "Administrator role tier",
+          "minLength": 5,
+          "maxLength": 20
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp"
+        }
+      },
+      "required": ["uid", "email", "role", "createdAt"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Invitation occasion category",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 300
+        },
+        "displayOrder": {
+          "type": "number"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "name", "slug", "description", "displayOrder", "isActive", "createdAt", "updatedAt"]
+    },
+    "Template": {
+      "title": "Template",
+      "description": "Professionally designed invitation website template",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "categoryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "categoryName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "tier": {
+          "type": "string",
+          "enum": ["free", "basic", "premium"],
+          "minLength": 4,
+          "maxLength": 20
+        },
+        "price": {
+          "type": "number"
+        },
+        "accentColor": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 30
+        },
+        "themeStyle": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 40
+        },
+        "previewImage": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "description": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 400
+        },
+        "isFeatured": {
+          "type": "boolean"
+        },
+        "isPopular": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "slug",
+        "categoryId",
+        "categoryName",
+        "tier",
+        "price",
+        "accentColor",
+        "themeStyle",
+        "previewImage",
+        "description",
+        "isFeatured",
+        "isPopular",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Invitation": {
+      "title": "Invitation",
+      "description": "Customer personalized invitation website instance",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "templateId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "categoryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "published"],
+          "minLength": 5,
+          "maxLength": 20
+        },
+        "eventTitle": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 140
+        },
+        "hostName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "brideName": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 100
+        },
+        "groomName": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 100
+        },
+        "familyNames": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 250
+        },
+        "eventDate": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 40
+        },
+        "eventTime": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 40
+        },
+        "venueName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 150
+        },
+        "venueAddress": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 300
+        },
+        "venueLat": {
+          "type": "number"
+        },
+        "venueLng": {
+          "type": "number"
+        },
+        "coverPhotoUrl": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 600
+        },
+        "backgroundImageUrl": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 600
+        },
+        "videoUrl": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 600
+        },
+        "musicTrack": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 200
+        },
+        "welcomeMessage": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 1000
+        },
+        "themeColor": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 30
+        },
+        "fontPairing": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60
+        },
+        "showCountdown": {
+          "type": "boolean"
+        },
+        "showMap": {
+          "type": "boolean"
+        },
+        "showRsvp": {
+          "type": "boolean"
+        },
+        "showWishes": {
+          "type": "boolean"
+        },
+        "whatsappNumber": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 30
+        },
+        "socialLink": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 300
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "slug",
+        "ownerId",
+        "templateId",
+        "categoryId",
+        "status",
+        "eventTitle",
+        "hostName",
+        "brideName",
+        "groomName",
+        "familyNames",
+        "eventDate",
+        "eventTime",
+        "venueName",
+        "venueAddress",
+        "venueLat",
+        "venueLng",
+        "coverPhotoUrl",
+        "backgroundImageUrl",
+        "videoUrl",
+        "musicTrack",
+        "welcomeMessage",
+        "themeColor",
+        "fontPairing",
+        "showCountdown",
+        "showMap",
+        "showRsvp",
+        "showWishes",
+        "whatsappNumber",
+        "socialLink",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "InvitationEvent": {
+      "title": "InvitationEvent",
+      "description": "Sub-event schedule item belonging to an invitation",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "invitationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "isPublic": {
+          "type": "boolean"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "eventDate": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 40
+        },
+        "eventTime": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 40
+        },
+        "venueName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 150
+        },
+        "venueAddress": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 300
+        },
+        "description": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 400
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "invitationId",
+        "ownerId",
+        "isPublic",
+        "title",
+        "eventDate",
+        "eventTime",
+        "venueName",
+        "venueAddress",
+        "description",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "InvitationGalleryItem": {
+      "title": "InvitationGalleryItem",
+      "description": "Photo gallery item belonging to an invitation",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "invitationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "isPublic": {
+          "type": "boolean"
+        },
+        "imageUrl": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "caption": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 200
+        },
+        "displayOrder": {
+          "type": "number"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "invitationId", "ownerId", "isPublic", "imageUrl", "caption", "displayOrder", "createdAt"]
+    },
+    "RsvpResponse": {
+      "title": "RsvpResponse",
+      "description": "Guest RSVP and wish submission for an invitation",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "invitationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "invitationOwnerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "guestName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "attending": {
+          "type": "string",
+          "enum": ["yes", "no", "maybe"],
+          "minLength": 2,
+          "maxLength": 10
+        },
+        "guestsCount": {
+          "type": "number"
+        },
+        "dietaryNotes": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 250
+        },
+        "wishMessage": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "isPublicWish": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "invitationId",
+        "invitationOwnerId",
+        "authorId",
+        "guestName",
+        "attending",
+        "guestsCount",
+        "dietaryNotes",
+        "wishMessage",
+        "isPublicWish",
+        "createdAt"
+      ]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer plan or template purchase order",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "planId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "planName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "invitationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "amount": {
+          "type": "number"
+        },
+        "discountAmount": {
+          "type": "number"
+        },
+        "finalAmount": {
+          "type": "number"
+        },
+        "couponCode": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 40
+        },
+        "currency": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 10
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "paid", "failed"],
+          "minLength": 4,
+          "maxLength": 20
+        },
+        "razorpayOrderId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "planId",
+        "planName",
+        "invitationId",
+        "amount",
+        "discountAmount",
+        "finalAmount",
+        "couponCode",
+        "currency",
+        "status",
+        "razorpayOrderId",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Verified Razorpay payment transaction",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "orderId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "amount": {
+          "type": "number"
+        },
+        "currency": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 10
+        },
+        "razorpayPaymentId": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 120
+        },
+        "razorpayOrderId": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 120
+        },
+        "razorpaySignature": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256
+        },
+        "status": {
+          "type": "string",
+          "enum": ["verified", "failed"],
+          "minLength": 6,
+          "maxLength": 20
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "orderId",
+        "ownerId",
+        "amount",
+        "currency",
+        "razorpayPaymentId",
+        "razorpayOrderId",
+        "razorpaySignature",
+        "status",
+        "createdAt"
+      ]
+    },
+    "SubscriptionPlan": {
+      "title": "SubscriptionPlan",
+      "description": "Pricing plan configuration",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60
+        },
+        "tier": {
+          "type": "string",
+          "enum": ["free", "basic", "premium", "custom"],
+          "minLength": 4,
+          "maxLength": 20
+        },
+        "price": {
+          "type": "number"
+        },
+        "currency": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 10
+        },
+        "billingPeriod": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 40
+        },
+        "description": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 250
+        },
+        "features": {
+          "type": "array",
+          "description": "Bounded array of plan feature strings (max 15)"
+        },
+        "isPopular": {
+          "type": "boolean"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "tier",
+        "price",
+        "currency",
+        "billingPeriod",
+        "description",
+        "features",
+        "isPopular",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Coupon": {
+      "title": "Coupon",
+      "description": "Promotional discount coupon",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "code": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 30,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "discountPercent": {
+          "type": "number"
+        },
+        "maxDiscountAmount": {
+          "type": "number"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "expiryDate": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 40
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "code", "discountPercent", "maxDiscountAmount", "isActive", "expiryDate", "createdAt", "updatedAt"]
+    },
+    "Testimonial": {
+      "title": "Testimonial",
+      "description": "Verified customer testimonial",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "customerRole": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "occasion": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "quote": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 500
+        },
+        "outcomeMetric": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "rating": {
+          "type": "number"
+        },
+        "isApproved": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "customerName",
+        "customerRole",
+        "occasion",
+        "quote",
+        "outcomeMetric",
+        "rating",
+        "isApproved",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "HomepageBanner": {
+      "title": "HomepageBanner",
+      "description": "Homepage hero banner and global platform settings",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "headline": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 160
+        },
+        "subheadline": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 350
+        },
+        "ctaText": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60
+        },
+        "promoText": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 140
+        },
+        "supportEmail": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "supportPhone": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 40
+        },
+        "razorpayKeyId": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 120
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "headline",
+        "subheadline",
+        "ctaText",
+        "promoText",
+        "supportEmail",
+        "supportPhone",
+        "razorpayKeyId",
+        "isActive",
+        "updatedAt"
+      ]
+    },
+    "ContactMessage": {
+      "title": "ContactMessage",
+      "description": "Customer inquiry submitted via homepage contact section",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "senderId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "senderName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "senderEmail": {
+          "type": "string",
+          "format": "email",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 150
+        },
+        "message": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 1500
+        },
+        "status": {
+          "type": "string",
+          "enum": ["new", "resolved"],
+          "minLength": 3,
+          "maxLength": 20
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "senderId", "senderName", "senderEmail", "subject", "message", "status", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Private customer user profiles isolated per owner"
+    },
+    "/admins/{adminId}": {
+      "schema": "AdminUser",
+      "description": "Authorized platform administrators"
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Invitation occasion categories"
+    },
+    "/templates/{templateId}": {
+      "schema": "Template",
+      "description": "Marketplace invitation templates"
+    },
+    "/invitations/{invitationId}": {
+      "schema": "Invitation",
+      "description": "Customer customized invitation websites"
+    },
+    "/invitations/{invitationId}/events/{eventId}": {
+      "schema": "InvitationEvent",
+      "description": "Sub-event schedules belonging to an invitation"
+    },
+    "/invitations/{invitationId}/gallery/{photoId}": {
+      "schema": "InvitationGalleryItem",
+      "description": "Photo gallery items belonging to an invitation"
+    },
+    "/invitations/{invitationId}/rsvps/{rsvpId}": {
+      "schema": "RsvpResponse",
+      "description": "Guest RSVP and wish submissions for an invitation"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Customer orders for pricing plans and invitations"
+    },
+    "/payments/{paymentId}": {
+      "schema": "Payment",
+      "description": "Verified Razorpay payment records"
+    },
+    "/plans/{planId}": {
+      "schema": "SubscriptionPlan",
+      "description": "Pricing and subscription plans"
+    },
+    "/coupons/{couponId}": {
+      "schema": "Coupon",
+      "description": "Discount coupons"
+    },
+    "/testimonials/{testimonialId}": {
+      "schema": "Testimonial",
+      "description": "Customer testimonials"
+    },
+    "/banners/{bannerId}": {
+      "schema": "HomepageBanner",
+      "description": "Homepage banners and website settings"
+    },
+    "/contact_messages/{messageId}": {
+      "schema": "ContactMessage",
+      "description": "Contact form messages"
+    }
+  }
+}
